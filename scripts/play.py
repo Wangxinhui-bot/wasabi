@@ -18,7 +18,9 @@ EXPORT_POLICY = True
 MOVE_CAMERA = True
 
 def play(args: argparse.Namespace):
-    args.task = "solo8"
+    # Use the task from command line arguments, default to "solo8" if not provided
+    if not hasattr(args, 'task') or args.task is None:
+        args.task = "solo8"
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 2)
@@ -63,7 +65,7 @@ def play(args: argparse.Namespace):
         print("Exported policy to: ", path)
 
     logger = Logger(env.dt)
-    robot_index = 1  # which robot is used for logging
+    robot_index = min(1, env.num_envs - 1)  # which robot is used for logging (use last available if num_envs < 2)
     joint_index = 3  # which joint is used for logging
     stop_state_log = 100  # number of steps before plotting states
     stop_rew_log = env.max_episode_length + 1  # number of steps before print average episode rewards
@@ -84,12 +86,29 @@ def play(args: argparse.Namespace):
             env.set_camera(camera_position, camera_position + camera_direction)
 
         if i < stop_state_log:
+            # Handle environments with active joint indices (e.g., pi_plus)
+            if hasattr(env, 'active_joint_indices'):
+                # Use active joints for default_dof_pos
+                active_default_dof_pos = env.default_dof_pos[:, env.active_joint_indices]
+                dof_pos_target = (actions * env.cfg.control.action_scale + active_default_dof_pos)[robot_index, joint_index].item()
+                # Use active joint index for dof_pos, dof_vel, torques
+                active_joint_idx = env.active_joint_indices[joint_index] if joint_index < len(env.active_joint_indices) else joint_index
+                dof_pos = env.dof_pos[robot_index, active_joint_idx].item()
+                dof_vel = env.dof_vel[robot_index, active_joint_idx].item()
+                dof_torque = env.torques[robot_index, active_joint_idx].item()
+            else:
+                # Standard environment (e.g., solo8)
+                dof_pos_target = (actions * env.cfg.control.action_scale + env.default_dof_pos)[robot_index, joint_index].item()
+                dof_pos = env.dof_pos[robot_index, joint_index].item()
+                dof_vel = env.dof_vel[robot_index, joint_index].item()
+                dof_torque = env.torques[robot_index, joint_index].item()
+            
             logger.log_states(
                 {
-                    "dof_pos_target": (actions * env.cfg.control.action_scale + env.default_dof_pos)[robot_index, joint_index].item(),
-                    "dof_pos": env.dof_pos[robot_index, joint_index].item(),
-                    "dof_vel": env.dof_vel[robot_index, joint_index].item(),
-                    "dof_torque": env.torques[robot_index, joint_index].item(),
+                    "dof_pos_target": dof_pos_target,
+                    "dof_pos": dof_pos,
+                    "dof_vel": dof_vel,
+                    "dof_torque": dof_torque,
                     "command_x": env.commands[robot_index, 0].item(),
                     "command_y": 0.0,
                     "command_yaw": 0.0,

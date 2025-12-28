@@ -79,4 +79,4 @@ class Discriminator(nn.Module):
             style_reward = style_reward * dt
             reward = (1.0 - self.reward_lerp) * style_reward + self.reward_lerp * task_reward.unsqueeze(-1)
             self.train()
-        return reward.squeeze(), style_reward.squeeze()
+        return reward.squeeze(-1), style_reward.squeeze(-1)

@@ -448,3 +448,10 @@ class PiPlus(LeggedRobot):
         lin_vel_error = torch.sum(torch.square(self.commands[:, :1] - self.base_lin_vel[:, :1]), dim=1)
         return torch.exp(-lin_vel_error / self.cfg.rewards.tracking_sigma)
 
+    def set_camera(self, position, lookat):
+        """ Set camera position and direction
+        """
+        cam_pos = gymapi.Vec3(position[0], position[1], position[2])
+        cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
+        self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+
