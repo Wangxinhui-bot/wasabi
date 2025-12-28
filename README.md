@@ -39,7 +39,7 @@ This repository provides the [Wasserstein Adversarial Behavior Imitation (WASABI
 4. Install `solo_gym`
 
         git clone https://github.com/martius-lab/wasabi.git
-        cd solo_gym
+        
         pip install -e .
 
 ## Configuration
